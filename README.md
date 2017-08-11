@@ -1,2 +1,2 @@
 # gauss
-Gaussian (normal) distribution implimentation for practical usage
+Gaussian (normal) distribution's Node.js implimentation for practical usage.
