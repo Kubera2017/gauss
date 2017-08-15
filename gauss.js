@@ -1,19 +1,7 @@
 ﻿'use strict';
 
-var data = [10, 10, 12, 12, 12, 13, 20];
-var prob = 0.95;  // prob {0.021 - 0.979}
-
-var alpha = getAlpha(data);
-var sigma = getSigma(data, alpha);
-var time = getTimeByProb2(prob, alpha, sigma);
-
-console.log('Data: ', data);
-console.log('Alpha: ' + alpha);
-console.log('Sigma: ' + sigma);
-console.log('Time: ' + time + ' with probability ' + prob);
-
-// Мат.ожидание
-function getAlpha(numbers) {
+// Mathematical expectation
+exports.mean = function (numbers) {
     var alpha = 0;
     for (var i = 0; i < numbers.length; i++) {
         alpha += numbers[i];
@@ -22,8 +10,8 @@ function getAlpha(numbers) {
     return alpha;
 }
 
-// Среднеквадратичное отклонение
-function getSigma(numbers, alpha){
+// Standard deviation
+exports.deviation = function (numbers, alpha){
     var sigma = 0;
     for (var i = 0; i < numbers.length; i++) {
         sigma += Math.pow((numbers[i] - alpha), 2);
@@ -32,90 +20,61 @@ function getSigma(numbers, alpha){
     return sigma;
 }
 
-// Функция ошибок
-function erf(x) {
-    const depth = 10;
+// Error function
+var erf = function (x) {
+    const epsilon = 0.001;
 
     var result = 0;
-    for (var n = 0; n < depth; n++) {
-        var member = 1;
+	var n = 0;
+	
+	while (true){
+		var member = 1;
         for (var i = 1; i <= n; i++) {
             member *= (-1) * Math.pow(x, 2) / i;
         }
-        member *= (x / (2 * n + 1));
-        result += member;
-    }
+		member *= (x / (2 * n + 1));
+		//console.log("Member ", n, member);
+		result += member;
+		if(Math.abs(member) <= epsilon){
+			break;
+		}
+		else{
+			n++;
+		}
+	}
+
     result *= 2 / Math.sqrt(Math.PI);
     return result;
 }
 
-// Функция распределения
-function calcProb(x, alpha, sigma) {
-    //console.log('me');
-    return 1 / 2 * (1 + erf((x - alpha) / (sigma * Math.sqrt(2))));
+// Cumulative distribution function
+var cdf = function (x, alpha, sigma) {
+    var calcedProb = 1 / 2 * (1 + erf((x - alpha) / (sigma * Math.sqrt(2))));
+	if (calcedProb > 1) {return 1;}
+	else {if (calcedProb < 0) {return 0;}
+	else{return calcedProb;}} 
 }
 
-// Время выполнения работы с заданной вероятностью v 1.0 15 calls
-function getTimeByProb(prob, alpha, sigma) {
-    const accur = 0.001;
 
-    var point = alpha;
-    var step = alpha / 2;
-    var counter = 0;
-    while (true) {
-        var pointProb = calcProb(point, alpha, sigma);
-        if (Math.abs(prob - pointProb) <= accur) {
-            //console.log('Steps: ' + counter+ ' CalcedProb: '+ pointProb);
-            return point;
-        }
-        else {
-            //console.log('Step ' + counter + ' Point: ' + point + ' Prob: ' + pointProb);
-            if ((pointProb- prob) > 0) {
-                if (calcProb((point - step), alpha, sigma) > prob) {
-                    point = point - step;
-                }
-                else {
-                    point = point - step;
-                    step /= 2;
-                }
-            }
-            else {
-                if (calcProb((point + step), alpha, sigma) < prob) {
-                    point = point + step;
-                }
-                else {
-                    point = point + step;
-                    step /= 2;
-                }
-            }
-            // console.log(step);
-        }
-
-        if (counter > 100) {
-            return NaN;
-        } else { counter++; }
-    }
-}
-
-// Время выполнения работы с заданной вероятностью v 2.0 8 calls
-function getTimeByProb2(prob, alpha, sigma) {
-    const accur = 0.001;
+// Value with target probability
+exports.getValueByProb = function (prob, alpha, sigma) {
+    const acc = 0.001;
 
     var point = alpha;
     var step = alpha / 2;
     var counter = 0;
     var lastResult;
 
-    lastResult = calcProb(point, alpha, sigma);
+    lastResult = cdf(point, alpha, sigma);
     while (true) {
-        if (Math.abs(prob - lastResult) <= accur) {
-            //console.log('Steps: ' + counter+ ' CalcedProb: '+ pointProb);
+        if (Math.abs(prob - lastResult) <= acc) {
+            //console.log('Steps: ' + counter+ ' CalcedProb: '+ lastResult);
             return point;
         }
         else {
-            //console.log('Step ' + counter + ' Point: ' + point + ' Prob: ' + pointProb);
+            //console.log('Step ' + counter + ' Point: ' + point + ' Prob: ' + lastResult);
             if ((lastResult - prob) > 0) {
-                lastResult = calcProb((point - step), alpha, sigma);
+                lastResult = cdf((point - step), alpha, sigma);
                 if (lastResult > prob) {
                     point = point - step;
                 }
@@ -125,7 +84,7 @@ function getTimeByProb2(prob, alpha, sigma) {
                 }
             }
             else {
-                lastResult = calcProb((point + step), alpha, sigma);
+                lastResult = cdf((point + step), alpha, sigma);
                 if (lastResult < prob) {
                     point = point + step;
                 }
@@ -136,10 +95,7 @@ function getTimeByProb2(prob, alpha, sigma) {
             }
             // console.log(step);
         }
-
-        if (counter > 100) {
-            return NaN;
-        } else { counter++; }
+		counter++;
     }
 }
 
